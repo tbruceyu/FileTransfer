@@ -1,7 +1,9 @@
 import inspect
 import ctypes
 import threading
-import time
+import win32api
+import win32con
+from pprint import pprint 
 
 #define DEBUG types
 INFO = 1
@@ -12,6 +14,7 @@ STOPPED = 0
 WATCHING = 1
 WAITING = 2
 WORKING = 3
+PROGRAM_PATH = ''
 class Log():
     @staticmethod
     def e(tag, string):
@@ -19,7 +22,27 @@ class Log():
     @staticmethod
     def d(tag, string):
         print "TAG" + tag + " content:" + string
-        
+def setProgramPath(path):
+    global PROGRAM_PATH
+    PROGRAM_PATH = path
+def getProgramPath(path):
+    return PROGRAM_PATH
+def RunOnStartup(path):
+    key =  win32api.RegOpenKey(win32con.HKEY_CURRENT_USER,
+                    "Software\Microsoft\Windows\CurrentVersion\Run",
+                    0,
+                    win32con.KEY_ALL_ACCESS
+                    )
+    needSet = False
+    try:
+        currentVal= win32api.RegQueryValueEx(key, 'FileTransferPC')
+        if currentVal != path:
+            needSet = True
+    except:
+        needSet = True
+    if needSet:
+        win32api.RegSetValueEx(key,'FileTransferPC',0,win32con.REG_SZ,'D:\\Program Files\\Console2\\Console.exe')
+    win32api.RegCloseKey(key)
 def _async_raise(tid, exctype):
     '''Raises an exception in the threads with id tid'''
     if not inspect.isclass(exctype):

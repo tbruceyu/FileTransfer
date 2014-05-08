@@ -28,7 +28,7 @@ def getSharefolder():
     temp_folders = []
     real_temp_path = ""
     for team_name in TEAMS :
-        team_path = os.path.join(SHARE_FOLDER, team_name)
+        team_path = os.path.join(SW_CONFIG['sharefolder'], team_name)
         team_members = os.listdir(team_path)
         for name in team_members:
             if USER_NAME.lower().find(name.lower()) != -1 :
@@ -48,7 +48,7 @@ def getDistPath():
     return ['D:\\']
 def find_compress_tool():
     # init 7z tool
-    if not os.path.isfile(COMPRESS_TOOL):
+    if not os.path.isfile(SW_CONFIG['7zpath']):
         COMPRESS_TOOL = "C:\\Program Files (x86)\\7-Zip\\7z.exe"
     if not os.path.isfile(COMPRESS_TOOL):
         print "can't find 7z.exe in 'C:\\Program Files\\7-Zip\\' and 'C:\\Program Files (x86)\\7-Zip\\'"
@@ -57,7 +57,7 @@ def config_file_exist():
     return os.path.exists(CONFIG_FILE)
 def set_config(doname, key, value):
     cf = ConfigParser.ConfigParser()
-    cf.set("dir_config", "LOCAL_DIR", LOCAL_DIR)
+    cf.set("dir_config", "LOCAL_DIR", SW_CONFIG['distpath'])
 def checkConfigValid(config):
     if not os.path.isfile(config['7zpath']):
         return False
@@ -116,11 +116,6 @@ def init_config():
     """
     Initiliaze all of the software configurations
     """
-    global SHARE_FOLDER
-    global LOCAL_DIR
-    global CONFIG_FILE
-    global COMPRESS_TOOL
-    global DEFAULT_LOCAL_DIR
     cf = ConfigParser.ConfigParser()
     try :
         cf.read(CONFIG_FILE)
@@ -148,14 +143,14 @@ def init_config():
         try:
             os.makedirs(SW_CONFIG['sharefolder'])
         except os.error:
-            print "Can't create the local folder:" + LOCAL_DIR + ", Please set another one"
+            print "Can't create the local folder:" + SW_CONFIG['distpath'] + ", Please set another one"
             clean()
             exit()
     if not os.path.exists(SW_CONFIG['distpath']):
         try:
             os.makedirs(SW_CONFIG['distpath'])
         except os.error:
-            print "Can't create the share folder:" + SHARE_FOLDER + " temp directory!"
+            print "Can't create the share folder:" + SW_CONFIG['sharefolder'] + " temp directory!"
             clean()
             os.system("pause")
             exit()
@@ -345,7 +340,7 @@ class WorkThread(QtCore.QThread):
                 if SW_CONFIG['backup'] == True:
                     local_dir = os.path.join(os.path.join(SW_CONFIG['distpath'], signal_file_name + "_"), file_dir)
                 else:
-                    local_dir = LOCAL_DIR
+                    local_dir = SW_CONFIG['distpath']
                 file_path = os.path.join(os.path.join(SW_CONFIG['sharefolder'], file_dir), file_name)
                 command = '"%s" x -o"' % SW_CONFIG['7zpath'] + local_dir + '" "' + file_path + '" -y'
                 print command

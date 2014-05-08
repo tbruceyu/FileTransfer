@@ -22,54 +22,76 @@ class MainWindow(QtGui.QFrame):
         transfer.init()
         self.setUI()
 
-    def setUI(self):
-        palette =  QtGui.QPalette();
-        palette.setColor(QtGui.QPalette.Background, QtGui.QColor(192,253,123))
-        #palette.setBrush(QPalette::Background, QBrush(QPixmap(":/background.png")));
-        self.setPalette(palette)
-        #splitter = QtGui.QSplitter(self)
-        self.createActions()
-        self.createTrayIcon()
-        qss_file = open('../../styles/common.qss').read()
-        self.setStyleSheet(qss_file)
-        self.setFixedSize(250, 400)
-        #self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
-        self.mainWindowWidget = QtGui.QWidget(self)
-        self.mainWindowWidget.setGeometry(QtCore.QRect(0, 0, 250, 400))
-        self.mainWindowLayout = QtGui.QVBoxLayout(self.mainWindowWidget)
-        self.runSettingWidget = QtGui.QWidget(self.mainWindowWidget)
-        self.runSettingWidget.setGeometry(QtCore.QRect(50, 30, 160, 80))
-        self.runSettingLayout = QtGui.QVBoxLayout(self.runSettingWidget)
+    def createLogWindow(self):
+        groupBox = QtGui.QGroupBox("Logs")
+        self.LogView = QtGui.QTextEdit()
+        self.LogView.setEnabled(False)
+
+        vbox = QtGui.QVBoxLayout()
+        vbox.addWidget(self.LogView)
+        vbox.addStretch(1)
+        groupBox.setLayout(vbox)
+        return groupBox
+    def createRightWindow(self):
+        groupBox = QtGui.QGroupBox()
+        settingWidget = QtGui.QWidget()
+        rightLayout = QtGui.QVBoxLayout()
+        self.runSettingLayout = QtGui.QVBoxLayout()
         self.runSettingLayout.setMargin(0)
-        self.Checkboxes = {'pop' : QtGui.QCheckBox(self.runSettingWidget),
-                          'backup' : QtGui.QCheckBox(self.runSettingWidget),
+        self.Checkboxes = {'pop' : QtGui.QCheckBox(),
+                          'backup' : QtGui.QCheckBox(),
                           }
         self.Checkboxes['pop'].setChecked(transfer.RUN_CONFIG['pop'])
         self.Checkboxes['backup'].setChecked(transfer.RUN_CONFIG['backup'])
         self.runSettingLayout.addWidget(self.Checkboxes['pop'])
         self.runSettingLayout.addWidget(self.Checkboxes['backup'])
-        self.horizontalLayoutWidget = QtGui.QWidget(self.mainWindowWidget)
-        self.horizontalLayoutWidget.setGeometry(QtCore.QRect(50, 130, 161, 51))
-        self.horizontalLayout = QtGui.QHBoxLayout(self.horizontalLayoutWidget)
-        self.horizontalLayout.setMargin(0)
-        self.RunButton = QtGui.QPushButton(self.horizontalLayoutWidget)
-        self.horizontalLayout.addWidget(self.RunButton)
-        self.StopButton = QtGui.QPushButton(self.horizontalLayoutWidget)
-        self.horizontalLayout.addWidget(self.StopButton)
-        self.createThreadWidget()
-        self.settingButton = QtGui.QPushButton(self.mainWindowWidget)
-        self.settingButton.setText("Settings")
-        self.settingButton.setStyleSheet("QPushButton { background: rgb(59, 138, 113);} \
-                                            QPushButton:hover {background: rgb(165, 165, 113);}")
-        self.settingButton.setGeometry(QtCore.QRect(10, 300, 100, 30))
-        self.historyButton = QtGui.QPushButton(self.mainWindowWidget)
-        self.historyButton.setText("History")
-        self.historyButton.setStyleSheet("QPushButton { background: rgb(59, 138, 113);} \
-                                            QPushButton:hover {background: rgb(165, 165, 113);}")
-        self.historyButton.setGeometry(QtCore.QRect(150, 300, 100, 30))
-#        splitter.addWidget(self.mainWindowWidget)
-#        splitter.addWidget(self.listwidget)
-#        splitter.setOrientation(QtCore.Qt.Horizontal)
+        settingWidget.setLayout(self.runSettingLayout)
+        
+        actionWidget = QtGui.QWidget()
+        self.actionLayout = QtGui.QHBoxLayout()
+        self.actionLayout.setMargin(0)
+        self.RunButton = QtGui.QPushButton()
+        self.RunButton.setObjectName('ActionButton')
+        self.actionLayout.addWidget(self.RunButton)
+        self.StopButton = QtGui.QPushButton()
+        self.StopButton.setObjectName('ActionButton')
+        self.actionLayout.addWidget(self.StopButton)
+        actionWidget.setLayout(self.actionLayout)
+        functionWidget = self.createFunctionButton()
+        rightLayout.setAlignment(QtCore.Qt.AlignTop)
+        rightLayout.setMargin(20)
+        rightLayout.setSpacing(10)
+        #rightLayout.addStretch(1)
+        rightLayout.addWidget(functionWidget)
+        rightLayout.addWidget(settingWidget)
+        rightLayout.addWidget(actionWidget)
+        groupBox.setLayout(rightLayout)
+        return groupBox
+    def setUI(self):
+        #palette =  QtGui.QPalette();
+        #palette.setColor(QtGui.QPalette.Background, QtGui.QColor(192,253,123))
+        #palette.setBrush(QPalette::Background, QBrush(QPixmap(":/background.png")));
+        #self.setPalette(palette)
+        #splitter = QtGui.QSplitter(self)
+        self.createActions()
+        self.createTrayIcon()
+        qss_file = open('../../styles/common.qss').read()
+        self.setStyleSheet(qss_file)
+        self.setFixedSize(400, 400)
+        mainLayout = QtGui.QVBoxLayout()
+        topWidget = QtGui.QWidget()
+        topLayout = QtGui.QHBoxLayout()
+        logWidget = self.createLogWindow()
+
+        threadWidget = self.createThreadWidget()
+        rightWidget = self.createRightWindow()
+        topLayout.addWidget(threadWidget)
+        topLayout.addWidget(rightWidget)
+        #self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
+        topWidget.setLayout(topLayout)
+        mainLayout.addWidget(topWidget)
+        mainLayout.addWidget(logWidget)
+        self.setLayout(mainLayout)
         self.retranslateUi(self)
         #QtCore.QObject.connect(self.RunButton, QtCore.SIGNAL(_fromUtf8("clicked()")), self.RunButtonClicked)
         QtCore.QMetaObject.connectSlotsByName(self)
@@ -201,24 +223,32 @@ class MainWindow(QtGui.QFrame):
         self.trayIcon = QtGui.QSystemTrayIcon(self)
         self.trayIcon.setContextMenu(self.trayIconMenu)
     def createThreadWidget(self):
-        self.threadWidget = []
+        groupBox = QtGui.QGroupBox("Thread pools")
         temp = {}
-        temp['widget'] = QtGui.QWidget(self)
-        temp['widget'].setGeometry(QtCore.QRect(50, 180, 161, 70))
-        temp['layout'] = QtGui.QGridLayout(temp['widget'])
+        temp['layout'] = QtGui.QGridLayout()
         temp['layout'].setSpacing(10)
         for i in range(3):
             temp['lable'] = QtGui.QLabel("Thread %d"%(i+1))
             temp['layout'].addWidget(temp['lable'], i, 0)
             temp['status'] = QtGui.QLabel("Free...")
             temp['layout'].addWidget(temp['status'], i, 1)
-            self.threadWidget.append(temp)
+        groupBox.setLayout(temp['layout'])
+        return groupBox
     def createFunctionButton(self):
-        self.threadWidget = []
-        temp = {}
-        temp['widget'] = QtGui.QWidget(self)
-        temp['widget'].setGeometry(QtCore.QRect(50, 180, 180, 300))
-        temp['layout'] = QtGui.QGridLayout(temp['widget'])
-        temp['layout'].setSpacing(10)
-        temp['lable'] = QtGui.QLabel("Setting")
-        self.threadWidget.append(temp)
+        groupBox = QtGui.QGroupBox()
+        layout = QtGui.QGridLayout()
+        self.settingButton = QtGui.QPushButton()
+        self.settingButton.setObjectName("settingButton")
+        self.settingButton.setText("Settings")
+        self.settingButton.setStyleSheet("QPushButton { background: rgb(59, 138, 113);border:none;padding: 3px;} \
+                                            QPushButton:hover {background: rgb(165, 165, 113);}")
+        self.historyButton = QtGui.QPushButton()
+        self.historyButton.setObjectName("settingButton")
+        self.historyButton.setText("History")
+        self.historyButton.setStyleSheet("QPushButton { background: rgb(59, 138, 113);} \
+                                            QPushButton:hover {background: rgb(165, 165, 113);}")
+        layout.addWidget(self.settingButton, 0, 0)
+        layout.addWidget(self.historyButton, 0, 1)
+        groupBox.setLayout(layout)
+        groupBox.setStyleSheet("QGroupBox{ border: 0px groove grey; border-radius:5px;border-style: outset;}")
+        return groupBox
