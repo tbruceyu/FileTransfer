@@ -4,7 +4,7 @@ import sys
 import os
 sys.path.append(os.path.abspath('%s/..' % sys.path[0]))
 from PyQt4 import QtCore, QtGui
-from core import transfer
+from core import transferPC
 from core import utils
 from UI.classwizard import ConfigWizard
 from UI.MainWindow import MainWindow
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     utils.setProgramPath(currentPath)
     import sys
     app = QtGui.QApplication(sys.argv)
-    if not transfer.init_config():
+    if not transferPC.init_config():
         wizard = ConfigWizard()
         wizard.show()
     else:

@@ -19,42 +19,11 @@ DEBUG_TAG = "transfer"
 TAG = DEBUG_TAG
 SW_CONFIG = {}
 RUN_CONFIG = {}
-USER_NAME = getpass.getuser()
-HOME_DIR = os.path.expanduser("~")
-CONFIG_FILE = os.path.join(HOME_DIR, "file_transfer.conf")
-TEAMS = ['Marine', 'Outdoor', 'Platform_Support', 'PND']
-def getSharefolder():
-    return ["C:\\Program Files\\7-Zip\\"]
-    temp_folders = []
-    real_temp_path = ""
-    for team_name in TEAMS :
-        team_path = os.path.join(SW_CONFIG['sharefolder'], team_name)
-        team_members = os.listdir(team_path)
-        for name in team_members:
-            if USER_NAME.lower().find(name.lower()) != -1 :
-                temp_folders.append(os.path.join(team_path, name))
-    return temp_folders
-def get7zPath():
-    return ['C:\\']
-    path = []
-    temp = 'C:\\Program Files (x86)\\7-Zip\\7z.exe'
-    if os.path.isfile(temp):
-        path.append(temp)
-    temp = 'C:\\Program Files\\7-Zip\\7z.exe'
-    if os.path.isfile(temp):
-        path.append(temp)
-    return path
+
+CONFIG_FILE = os.path.join(common.HOME_DIR, "file_transfer.conf")
+
 def getDistPath():
     return ['D:\\']
-def find_compress_tool():
-    # init 7z tool
-    if not os.path.isfile(SW_CONFIG['7zpath']):
-        COMPRESS_TOOL = "C:\\Program Files (x86)\\7-Zip\\7z.exe"
-    if not os.path.isfile(COMPRESS_TOOL):
-        print "can't find 7z.exe in 'C:\\Program Files\\7-Zip\\' and 'C:\\Program Files (x86)\\7-Zip\\'"
-        COMPRESS_TOOL = raw_input("please input your 7z.exe path:")
-def config_file_exist():
-    return os.path.exists(CONFIG_FILE)
 def set_config(doname, key, value):
     cf = ConfigParser.ConfigParser()
     cf.set("dir_config", "LOCAL_DIR", SW_CONFIG['distpath'])

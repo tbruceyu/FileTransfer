@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # View the file transfer history
 from PyQt4 import QtGui
-from core.transfer import HistoryThread
+from core.transferPC import HistoryThread
 import os
 
 class HistoryPageWindow(QtGui.QWidget):

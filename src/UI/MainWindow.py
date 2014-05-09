@@ -1,6 +1,6 @@
 from PyQt4 import QtCore, QtGui, Qt
-from core import transfer, utils
-from core.transfer import WorkThread
+from core import transferPC, utils
+from core.transferPC import WorkThread
 from UI.ConfigurePage import ConfigInfoPage
 from UI.HistoryPage import HistoryPageWindow
 DEBUG_TAG = "MainWindow"
@@ -19,7 +19,7 @@ except AttributeError:
 class MainWindow(QtGui.QFrame):
     def __init__(self):
         super(MainWindow, self).__init__()
-        transfer.init()
+        transferPC.init()
         self.setUI()
 
     def createLogWindow(self):
@@ -41,8 +41,8 @@ class MainWindow(QtGui.QFrame):
         self.Checkboxes = {'pop' : QtGui.QCheckBox(),
                           'backup' : QtGui.QCheckBox(),
                           }
-        self.Checkboxes['pop'].setChecked(transfer.RUN_CONFIG['pop'])
-        self.Checkboxes['backup'].setChecked(transfer.RUN_CONFIG['backup'])
+        self.Checkboxes['pop'].setChecked(transferPC.RUN_CONFIG['pop'])
+        self.Checkboxes['backup'].setChecked(transferPC.RUN_CONFIG['backup'])
         self.runSettingLayout.addWidget(self.Checkboxes['pop'])
         self.runSettingLayout.addWidget(self.Checkboxes['backup'])
         settingWidget.setLayout(self.runSettingLayout)
@@ -152,9 +152,9 @@ class MainWindow(QtGui.QFrame):
         self.historyPage = HistoryPageWindow()
         self.historyPage.show()
     def PopCheckboxToggle(self, visible):
-        transfer.set_run_config('pop', visible)
+        transferPC.set_run_config('pop', visible)
     def BackupCheckboxToggle(self, visible):
-        transfer.set_run_config('backup', visible)
+        transferPC.set_run_config('backup', visible)
     def retranslateUi(self, Dialog):
         Dialog.setWindowTitle(_translate("Dialog", "Dialog", None))
         self.Checkboxes['pop'].setText(_translate("Dialog", "Pop Window", None))

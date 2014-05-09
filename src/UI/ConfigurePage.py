@@ -1,5 +1,5 @@
 from PyQt4 import QtCore, QtGui
-from core import transfer, common
+from core import transferPC, common
 
 class ConfigInfoPage(QtGui.QDialog):
     def __init__(self, first, parent=None):
@@ -7,21 +7,21 @@ class ConfigInfoPage(QtGui.QDialog):
         self.setWindowTitle("Configuration")
         self.compressPathLable = QtGui.QLabel("7z.exe path:")
         self.compressPathLable.setFixedSize(80, 20)
-        self.compressPathComboBox = self.createComboBox(transfer.get7zPath())
+        self.compressPathComboBox = self.createComboBox(common.get7zPath())
         self.compressPathComboBox.setFixedSize(300, 20)
         self.compressPathLable.setBuddy(self.compressPathComboBox)
         self.compressButton = QtGui.QPushButton("...")
         self.compressButton.setFixedSize(30, 20)
         self.compressButton.clicked.connect(self.set7zPath)
         self.shareFolderLable = QtGui.QLabel("Share folder:")
-        self.shareFolderComboBox = self.createComboBox(transfer.getSharefolder())
+        self.shareFolderComboBox = self.createComboBox(common.getSharefolder())
         self.shareFolderButton = QtGui.QPushButton("...")
         self.shareFolderButton.setFixedSize(30, 20)
         self.shareFolderButton.clicked.connect(self.setShareFolder)
         self.shareFolderLable.setBuddy(self.shareFolderComboBox)
         
         self.distFolderLable = QtGui.QLabel("Dist folder:")
-        self.distFolderComboBox = self.createComboBox(transfer.getDistPath())
+        self.distFolderComboBox = self.createComboBox(transferPC.getDistPath())
         self.distFolderButton = QtGui.QPushButton("...")
         self.distFolderButton.setFixedSize(30, 20)
         self.distFolderButton.clicked.connect(self.setDistFolder)
@@ -100,8 +100,8 @@ class ConfigInfoPage(QtGui.QDialog):
         config['distpath'] = self.getDistPath()
         config['startup'] = self.isStartup()
         config['sw_version'] = common.Version;
-        if transfer.checkConfigValid(config) :
-            transfer.saveConfig(config)
+        if transferPC.checkConfigValid(config) :
+            transferPC.saveConfig(config)
             super(ConfigInfoPage, self).accept()
         else:
             QtGui.QMessageBox.critical(self, "Config Invalid!",
