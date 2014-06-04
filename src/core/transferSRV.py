@@ -10,16 +10,16 @@ import ConfigParser
 import getpass
 import sys
 from optparse import OptionParser
-from core import common
+from core import common, utils
 from core.utils import Log
 import stat
 from shutil import SpecialFileError
 TAG = 'transferSRV'
 BLOCK_SIZE = 16*1024
+THREAD_NUM = 4
 SW_CONFIG = {}
 PC_CONFIG = {}
 CONFIG_FILE = os.path.join(common.HOME_DIR, 'file_transfer.conf')
-EXECUTE_COMMAND = "hehe"
 
 class copy_thread(threading.Thread):
     offset = 0
@@ -36,16 +36,11 @@ class copy_thread(threading.Thread):
                 os.path.normcase(os.path.abspath(dst)))
     def copyfileobj(self, fsrc, fdst):
         """copy data from file-like object fsrc to file-like object fdst"""
-        remainBlock = 0
-        length = BLOCK_SIZE
         while self.doneBlock < self.totalBlock:
-            remainBlock = self.totalBlock - self.doneBlock
-            if remainBlock < length:
-                length = remainBlock
             buf = fsrc.read(BLOCK_SIZE)
             if not buf:
                 break
-            time.sleep(0.1)
+            time.sleep(0.01)
             fdst.write(buf)
             self.doneBlock = self.doneBlock + 1
     def _copy_file(self):
@@ -69,8 +64,10 @@ class copy_thread(threading.Thread):
                     raise SpecialFileError("`%s` is a named pipe" % fn)
     
         with open(self.source_file, 'rb') as fsrc:
-            fsrc.seek(self.offset, (self.offset + self.totalBlock)*BLOCK_SIZE)
+            print "offset:%d, totalBlock:%d"%(self.offset, self.totalBlock)
+            fsrc.seek(self.offset*BLOCK_SIZE, (self.offset + self.totalBlock)*BLOCK_SIZE)
             with open(self.dest_file, 'wb') as fdst:
+                fdst.seek(self.offset*BLOCK_SIZE, (self.offset + self.totalBlock)*BLOCK_SIZE)
                 self.copyfileobj(fsrc, fdst)
         elapsed = (time.clock() - start)
         print 'Time used for copy ' + self.dest_file + ': %f' % elapsed + ', Speed:%f' % (file_size / elapsed) + 'kb/s\n'
@@ -107,12 +104,12 @@ def compress_file(source_file, dest_file):
         os.system('pause')
         exit(1)
     #command = ''C:\\Program Files\\7-Zip\\7z' a -tzip -v%d ''%part_size+dest_file+'\' ''+source_file+'''
-    command = '"'+SW_CONFIG['7zpath']+'" a -mx9 -t7z -v%d "'%44+dest_file+'\" "'+source_file+'"'
+    command = '"'+SW_CONFIG['7zpath']+'" a -tzip "'+dest_file+'\" "'+source_file+'"'
     print command
     ps = subprocess.Popen(command)
     ps.wait()
     elapsed = (time.clock() - start)
-    print 'Time used for compress ' + dest_file + ': %f' % elapsed + ', Speed:%f' % (file_size / 1024 / elapsed) + 'kb/s\n'
+    utils.Log.d(TAG, 'Time used for compress ' + dest_file + ': %f' % elapsed + ', Speed:%f' % (file_size / 1024 / elapsed) + 'kb/s\n')
 def get_file_list(dir, rand_name):
     file_list = []
     for file in os.listdir(dir):
@@ -122,41 +119,50 @@ def get_file_list(dir, rand_name):
     return file_list
 def multi_thread_send(source_file, dest_path):
     i = 0
-    threads = range(0, 4)
+    threadNum = THREAD_NUM
+    file_size = GetPathSize(source_file)
+    if file_size < 4*BLOCK_SIZE:
+        threadNum = 1
+    threads = range(0, threadNum)
     fileBlock = os.path.getsize(source_file)/BLOCK_SIZE
     partBlock = fileBlock/4
     offsetBlock = 0
     #first three threads transaction
-    for i in range(3):
-        dest_temp = "%s.0%d"%(os.path.join(dest_path, os.path.basename(source_file)), i)
-        threads[i] = copy_thread(source_file, offsetBlock, partBlock, dest_temp)
-        offsetBlock += partBlock
+    if threadNum > 1:
+        for i in range(0, len(threads)):
+            dest_temp = "%s"%(os.path.join(dest_path, os.path.basename(source_file)))
+            tempBlockLen = partBlock
+            if i == (len(threads) - 1):
+                tempBlockLen = fileBlock - offsetBlock + 1
+            threads[i] = copy_thread(source_file, offsetBlock, tempBlockLen, dest_temp)
+            offsetBlock += tempBlockLen
+            threads[i].setDaemon(True)
+            threads[i].start()
+    else:
+        dest_temp = "%s"%(os.path.join(dest_path, os.path.basename(source_file)))
+        threads[i] = copy_thread(source_file, offsetBlock, fileBlock - offsetBlock + 1, dest_temp)
         threads[i].setDaemon(True)
         threads[i].start()
-    #last thread transaction
-    i += 1
-    dest_temp = "%s.0%d"%(os.path.join(dest_path, os.path.basename(source_file)), i)
-    threads[i] = copy_thread(source_file, offsetBlock, fileBlock - offsetBlock + 1, dest_temp)
-    threads[i].setDaemon(True)
-    threads[i].start()
-    copyBlock = 0
-    while 1:
+    while True:
+        copyBlock = 0
         alive = False
         for i in range(0, len(threads)):
             copyBlock = copyBlock + threads[i].getdoneBlock()
             alive = alive or threads[i].isAlive()
         if not alive:
             break
-        time.sleep(1)
-        sys.stdout.write("\r%d%%" %((copyBlock/fileBlock)*10))
+        time.sleep(0.1)
+        #print the percent
+        if fileBlock > 0:
+            sys.stdout.write("\r%d%%" %((copyBlock*100/fileBlock)))
 def write_signal_file(time_name, file_name):
     try:
         fp = open(os.path.join(os.path.join(SW_CONFIG['sharefolder'], time_name), time_name + '.sig'), 'w')
         cf = ConfigParser.ConfigParser()
         cf.add_section('information')
         cf.set('information', 'file_name', file_name)
-        if EXECUTE_COMMAND != '':
-            cf.set('information', 'execute_command', EXECUTE_COMMAND)
+        if SW_CONFIG['exec_command'] != None:
+            cf.set('information', 'execute_command', SW_CONFIG['exec_command'])
         cf.write(fp)
         fp.close()
     except IOError:
@@ -193,16 +199,16 @@ def clean():
 def init_config():
     SW_CONFIG['compress_dir'] = 'D:\\User\\' + common.USER_NAME + '\\compress_temp'
     SW_CONFIG['sharefolder'] = common.getSharefolder()
-    SW_CONFIG['7zpath'] = common.get7zPath()[0]
+    SW_CONFIG['7zpath'] = common.get7zPath(True)
     while True:
         cf = ConfigParser.ConfigParser()
         if not os.path.exists(CONFIG_FILE):
             # init 7z tool
-            if not os.path.isfile(SW_CONFIG['7zpath']):
-                COMPRESS_TOOL = 'C:\\Program Files (x86)\\7-Zip\\7z.exe'
-            if not os.path.isfile(COMPRESS_TOOL):
+            temp = SW_CONFIG['7zpath']
+            while not os.path.isfile(temp):
                 print "can't find 7z.exe in 'C:\\Program Files\\7-Zip\\' and 'C:\\Program Files (x86)\\7-Zip\\'"
-                COMPRESS_TOOL = raw_input('please input your 7z.exe path:')
+                temp = raw_input('please input your 7z.exe path:')
+            SW_CONFIG['7zpath'] = temp
             cf.add_section('dir_config')
             SW_CONFIG['7zpath'] = SW_CONFIG['7zpath'].strip('\'')
             SW_CONFIG['sharefolder'] = SW_CONFIG['sharefolder'].strip('\'')
@@ -227,10 +233,11 @@ def init_config():
             except ConfigParser.Error:
                 print 'Config file parse error!'
                 clean()
-def start(file_path):
+def start(file_path, execCommand = None):
+    SW_CONFIG['exec_command'] = execCommand
     time_name = time.strftime(os.path.basename(file_path)+" %Y-%m-%d_%H-%M-%S", time.localtime(time.time()))
-    #compress_file(file_path, os.path.join(SW_CONFIG['compress_dir'], time_name))
+    compress_file(file_path, os.path.join(SW_CONFIG['compress_dir'], time_name))
     make_file_dir(time_name)
-    multi_thread_send(file_path, os.path.join(SW_CONFIG['sharefolder'], time_name))
+    multi_thread_send(os.path.join(SW_CONFIG['compress_dir'], time_name), os.path.join(SW_CONFIG['sharefolder'], time_name))
     write_signal_file(time_name, os.path.basename(file_path))
     print "END!!"

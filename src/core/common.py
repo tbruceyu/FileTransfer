@@ -7,20 +7,21 @@ SIGNAL_FILE_NAME = 'file_name'
 SIGNAL_EXECUTE_COMMAND = 'execute_command'
 USER_NAME = getpass.getuser()
 HOME_DIR = os.path.expanduser("~")
-SHARE_FOLDER = "C:\\Program Files\\7-Zip\\"
+SHARE_FOLDER = "F:\\ShareFolder"
 TEAMS = ['Marine', 'Outdoor', 'Platform_Support', 'PND']
 def getSharefolder():
-    return "F:\\ShareFolder"
     temp_folders = []
     for team_name in TEAMS :
         team_path = os.path.join(SHARE_FOLDER, team_name)
-        team_members = os.listdir(team_path)
+        try:
+            team_members = os.listdir(team_path)
+        except:
+            continue
         for name in team_members:
             if USER_NAME.lower().find(name.lower()) != -1 :
                 temp_folders.append(os.path.join(team_path, name))
     return temp_folders
-def get7zPath():
-    return ['C:\\']
+def get7zPath(single = False):
     path = []
     temp = 'C:\\Program Files (x86)\\7-Zip\\7z.exe'
     if os.path.isfile(temp):
@@ -28,4 +29,8 @@ def get7zPath():
     temp = 'C:\\Program Files\\7-Zip\\7z.exe'
     if os.path.isfile(temp):
         path.append(temp)
+    if single == True:
+        return path[0]
+    if len(path) == 0:
+        return None
     return path

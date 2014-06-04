@@ -3,8 +3,8 @@
 # The configuration wizard when first lunch the tool
 
 from PyQt4 import QtGui
-from core import transfer, common
-from UI import MainWindow
+from core import transferPC, common
+from UI.MainWindow import MainWindow
 
 class ConfigWizard(QtGui.QWizard):
     def __init__(self, parent=None):
@@ -25,8 +25,8 @@ class ConfigWizard(QtGui.QWizard):
         config['distpath'] = self.configPage.getDistPath()
         config['startup'] = self.configPage.isStartup()
         config['sw_version'] = common.Version;
-        if transfer.checkConfigValid(config) :
-            transfer.saveConfig(config)
+        if transferPC.checkConfigValid(config) :
+            transferPC.saveConfig(config)
             self.mainWindow = MainWindow()
             self.mainWindow.show()
             super(ConfigWizard, self).accept()
@@ -43,20 +43,20 @@ class ConfigInfoPage(QtGui.QWizardPage):
         self.setSubTitle("This is your first time run this tool. "
                 "Please complete the following configration")
         self.compressPathLable = QtGui.QLabel("7z.exe path:")
-        self.compressPathComboBox = self.createComboBox(transfer.get7zPath())
+        self.compressPathComboBox = self.createComboBox(common.get7zPath())
         self.compressPathLable.setBuddy(self.compressPathComboBox)
         self.compressButton = QtGui.QPushButton("...")
         self.compressButton.setFixedSize(30, 20)
         self.compressButton.clicked.connect(self.set7zPath)
         self.shareFolderLable = QtGui.QLabel("Share folder:")
-        self.shareFolderComboBox = self.createComboBox(transfer.getSharefolder())
+        self.shareFolderComboBox = self.createComboBox(common.getSharefolder())
         self.shareFolderButton = QtGui.QPushButton("...")
         self.shareFolderButton.setFixedSize(30, 20)
         self.shareFolderButton.clicked.connect(self.setShareFolder)
         self.shareFolderLable.setBuddy(self.shareFolderComboBox)
         
         self.distFolderLable = QtGui.QLabel("Dist folder:")
-        self.distFolderComboBox = self.createComboBox(transfer.getDistPath())
+        self.distFolderComboBox = self.createComboBox(transferPC.getDistPath())
         self.distFolderButton = QtGui.QPushButton("...")
         self.distFolderButton.setFixedSize(30, 20)
         self.distFolderButton.clicked.connect(self.setDistFolder)
