@@ -12,9 +12,9 @@ TEAMS = ['Marine', 'Outdoor', 'Platform_Support', 'PND']
 THREAD_NUM = 3
 USER_DIR = 'D:\\User\\'
 # Server port private
-COMPRESS_TEMP_DIR = USER_DIR + USER_NAME + '\\compress_temp'
-
-MMAP_FILE = 'D:\\User\\' + USER_NAME + 'mmap_file'
+COMPRESS_TEMP_DIR = os.path.join(os.path.join(USER_DIR, USER_NAME), 'compress_temp')
+# this file only for mmap use
+MMAP_FILE = os.path.join(os.path.join(USER_DIR, USER_NAME), 'mmap.bin')
 
 def getSharefolder():
     temp_folders = []
