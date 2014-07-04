@@ -3,7 +3,14 @@ from core import transferPC, utils
 from core.transferPC import WorkThread
 from UI.ConfigurePage import ConfigInfoPage
 from UI.HistoryPage import HistoryPageWindow
+import resource.resource
+import sys
 DEBUG_TAG = "MainWindow"
+LOG_LEVEL_COLOR_TABLE = {
+                 utils.INFO: QtGui.QColor(0, 0x22, 0),
+                 utils.WARNING: QtGui.QColor(0xCC, 0x66, 0),
+                 utils.ERROR: QtGui.QColor(0x77, 0, 0)
+                 }
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
@@ -25,7 +32,7 @@ class MainWindow(QtGui.QFrame):
     def createLogWindow(self):
         groupBox = QtGui.QGroupBox("Logs")
         self.LogView = QtGui.QTextEdit()
-        self.LogView.setEnabled(False)
+        self.LogView.setReadOnly(True)
 
         vbox = QtGui.QVBoxLayout()
         vbox.addWidget(self.LogView)
@@ -75,8 +82,13 @@ class MainWindow(QtGui.QFrame):
         #splitter = QtGui.QSplitter(self)
         self.createActions()
         self.createTrayIcon()
-        qss_file = open('../../styles/common.qss').read()
-        self.setStyleSheet(qss_file)
+        qss_file = QtCore.QFile(':/styles/common.qss')
+        qss_file.open(QtCore.QFile.ReadOnly)
+        styleSheet = qss_file.readAll()
+        styleSheet = unicode(styleSheet, encoding='utf8')
+        self.setStyleSheet(styleSheet)
+
+
         self.setFixedSize(400, 400)
         mainLayout = QtGui.QVBoxLayout()
         topWidget = QtGui.QWidget()
@@ -107,15 +119,27 @@ class MainWindow(QtGui.QFrame):
         self.StopButton.setEnabled(False)
         self.Checkboxes['pop'].toggled.connect(self.PopCheckboxToggle)
         self.Checkboxes['backup'].toggled.connect(self.BackupCheckboxToggle)
+        self.Log(1, "sdfjlsdjfl")
+        self.Log(3, "sdfjlsdjfl")
+    def Log(self, level, content):
+        fmt = QtGui.QTextCharFormat()
+        fmt.setForeground(LOG_LEVEL_COLOR_TABLE[level])
+        font = QtGui.QFont("simsun", 13, QtGui.QFont.Bold)
+        fmt.setFont(font)
+
+        cursor = self.LogView.textCursor()
+        cursor.mergeCharFormat(fmt)
+        self.LogView.mergeCurrentCharFormat(fmt)
+        self.LogView.append(content)
     def setIconByState(self, state):
         if state == utils.STOPPED:
-            icon = QtGui.QIcon('../../images/bad.svg')
+            icon = QtGui.QIcon(':/images/bad.svg')
         elif state == utils.WAITING:
-            icon = QtGui.QIcon('../../images/heart.svg')
+            icon = QtGui.QIcon(':/images/heart.svg')
         elif state == utils.WATCHING:
-            icon = QtGui.QIcon('../../images/trash.svg')
+            icon = QtGui.QIcon(':/images/trash.svg')
         elif state == utils.WORKING:
-            icon = QtGui.QIcon('../../images/trash.svg')
+            icon = QtGui.QIcon(':/images/trash.svg')
         self.trayIcon.setIcon(icon)
     def SuccessStartedSlot(self):
         self.RunButton.setEnabled(False)
@@ -138,6 +162,7 @@ class MainWindow(QtGui.QFrame):
         self.WorkThread.signalStartSucceed.connect(self.SuccessStartedSlot)
         self.WorkThread.signalPromptMsg[int, str].connect(self.PromptSlot)
         self.WorkThread.signalWorkState[int].connect(self.UpdateWorkState)
+        self.WorkThread.signalLog[int, str].connect(self.Log)
         self.WorkThread.start()
     def StopButtonClick(self):
         self.WorkThread.stop()
@@ -210,8 +235,11 @@ class MainWindow(QtGui.QFrame):
                 triggered=self.showNormal)
 
         self.quitAction = QtGui.QAction("&Quit", self,
-                triggered=QtGui.qApp.quit)
-
+                triggered=self.exit)
+    def exit(self):
+        self.WorkThread.stop()
+        QtGui.qApp.quit()
+        sys.exit(0)
     def createTrayIcon(self):
         self.trayIconMenu = QtGui.QMenu(self)
         self.trayIconMenu.addAction(self.minimizeAction)
@@ -240,7 +268,7 @@ class MainWindow(QtGui.QFrame):
         self.settingButton = QtGui.QPushButton()
         self.settingButton.setObjectName("settingButton")
         self.settingButton.setText("Settings")
-        self.settingButton.setStyleSheet("QPushButton { background: rgb(59, 138, 113);border:none;padding: 3px;} \
+        self.settingButton.setStyleSheet("QPushButton { background: rgb(59, 138, 113);}\
                                             QPushButton:hover {background: rgb(165, 165, 113);}")
         self.historyButton = QtGui.QPushButton()
         self.historyButton.setObjectName("settingButton")

@@ -14,6 +14,7 @@ STOPPED = 0
 WATCHING = 1
 WAITING = 2
 WORKING = 3
+
 PROGRAM_PATH = ''
 class Log():
     @staticmethod
@@ -21,7 +22,10 @@ class Log():
         print "TAG:"+tag+" content:"+string
     @staticmethod
     def d(tag, string):
-        print "TAG" + tag + " content:" + string
+        print "d:" + tag + " content:" + string
+    @staticmethod
+    def v(tag, string):
+        print "v:" + string
 def setProgramPath(path):
     global PROGRAM_PATH
     PROGRAM_PATH = path

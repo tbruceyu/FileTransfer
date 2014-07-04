@@ -19,7 +19,7 @@ BLOCK_SIZE = 16*1024
 THREAD_NUM = 4
 SW_CONFIG = {}
 PC_CONFIG = {}
-CONFIG_FILE = os.path.join(common.HOME_DIR, 'file_transfer.conf')
+CONFIG_FILE = os.path.join(common.HOME_DIR, 'file_transfer_SRV.conf')
 
 class copy_thread(threading.Thread):
     offset = 0
@@ -130,7 +130,7 @@ def multi_thread_send(source_file, dest_path):
     #first three threads transaction
     if threadNum > 1:
         for i in range(0, len(threads)):
-            dest_temp = "%s"%(os.path.join(dest_path, os.path.basename(source_file)))
+            dest_temp = "%s"%(os.path.join(dest_path, os.path.basename(dest_path)))+".zip"
             tempBlockLen = partBlock
             if i == (len(threads) - 1):
                 tempBlockLen = fileBlock - offsetBlock + 1
@@ -197,9 +197,16 @@ def clean():
     print 'delete config file...'
     os.remove(CONFIG_FILE)
 def init_config():
-    SW_CONFIG['compress_dir'] = 'D:\\User\\' + common.USER_NAME + '\\compress_temp'
-    SW_CONFIG['sharefolder'] = common.getSharefolder()
+    SW_CONFIG['compress_dir'] = common.COMPRESS_TEMP_DIR
+    shareFolderList = common.getSharefolder()
     SW_CONFIG['7zpath'] = common.get7zPath(True)
+    choose = 0
+    if len(shareFolderList) > 1:
+        choose = raw_input( "There are multipi sharefolder maybe yours, please choose:")
+        for i in range(0, len(shareFolderList)):
+            print "%d : %s"%(i+1, shareFolderList[i])
+        choose = int(choose)
+    SW_CONFIG['sharefolder'] = shareFolderList[choose-1]
     while True:
         cf = ConfigParser.ConfigParser()
         if not os.path.exists(CONFIG_FILE):
@@ -235,9 +242,10 @@ def init_config():
                 clean()
 def start(file_path, execCommand = None):
     SW_CONFIG['exec_command'] = execCommand
-    time_name = time.strftime(os.path.basename(file_path)+" %Y-%m-%d_%H-%M-%S", time.localtime(time.time()))
-    compress_file(file_path, os.path.join(SW_CONFIG['compress_dir'], time_name))
-    make_file_dir(time_name)
-    multi_thread_send(os.path.join(SW_CONFIG['compress_dir'], time_name), os.path.join(SW_CONFIG['sharefolder'], time_name))
-    write_signal_file(time_name, os.path.basename(file_path))
+    timeString = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(time.time()))
+    compressName = timeString + ".zip"
+    compress_file(file_path, os.path.join(SW_CONFIG['compress_dir'], compressName))
+    make_file_dir(timeString)
+    multi_thread_send(os.path.join(SW_CONFIG['compress_dir'], compressName), os.path.join(SW_CONFIG['sharefolder'], timeString))
+    write_signal_file(timeString, os.path.basename(file_path))
     print "END!!"

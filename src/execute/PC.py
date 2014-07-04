@@ -8,6 +8,7 @@ from core import transferPC
 from core import utils
 from UI.classwizard import ConfigWizard
 from UI.MainWindow import MainWindow
+
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:

@@ -11,7 +11,8 @@ import threading
 from core.utils import Log
 from PyQt4.QtCore import pyqtSignal
 from PyQt4 import QtCore
-from core import utils, common
+from core import utils
+from core.common import *
 import Queue
 from pprint import pprint 
 
@@ -20,7 +21,7 @@ TAG = DEBUG_TAG
 SW_CONFIG = {}
 RUN_CONFIG = {}
 
-CONFIG_FILE = os.path.join(common.HOME_DIR, "file_transfer.conf")
+CONFIG_FILE = os.path.join(HOME_DIR, "file_transfer.conf")
 
 def getDistPath():
     return ['D:\\']
@@ -140,8 +141,8 @@ def clean():
     except os.error as e:
         Log.e(DEBUG_TAG, "Delete config file%s error, reason:%s"%(CONFIG_FILE, e))
 
-def start(silence, backup):
-    WorkThread(silence, backup)
+def start(pop, backup):
+    WorkThread(pop, backup)
 
 class HistoryThread(QtCore.QThread):
     """ 
@@ -163,6 +164,8 @@ class HistoryThread(QtCore.QThread):
             temp['comment'] = "comment"
             self.data.append(temp)
             self.signalCallback.emit(temp)
+gSignalWorkState = None
+gSignalLog = None
 class WorkThread(QtCore.QThread):
     """
     Worker thread class
@@ -170,20 +173,25 @@ class WorkThread(QtCore.QThread):
     signalStartSucceed = pyqtSignal() #声明信号
     signalPromptMsg = pyqtSignal([int, str])
     signalWorkState = pyqtSignal(int)
+    signalLog = pyqtSignal([int, str])
     stopped = False
-    runConfig = {'silence' : False, 'backup' : False}
-    def __init__(self, silence, backup):
+    runConfig = {'pop' : False, 'backup' : False}
+    def __init__(self, pop, backup):
+        global gSignalWorkState
+        global gSignalLog
         super(WorkThread, self).__init__(None)
-        self.processThreadPool = self.threadPoolWorkThread(3)
-        self.silence = silence
+        self.processThreadPool = self.threadPoolWorkThread(THREAD_NUM)
+        self.pop = pop
         self.backup = backup
+        gSignalWorkState = self.signalWorkState
+        gSignalLog = self.signalLog
     def run(self):
         self.signalStartSucceed.emit()
         saveCurrentConfig()
         #self.signalPromptMsg.emit(1, "hehe")
-        self.start_(self.silence, self.backup)
-    def start_(self, silence, backup):
-        self.runConfig['silence'] = silence
+        self.start_(self.pop, self.backup)
+    def start_(self, pop, backup):
+        self.runConfig['pop'] = pop
         self.runConfig['backup'] = backup
         self.stopped = False
         try:
@@ -199,7 +207,6 @@ class WorkThread(QtCore.QThread):
             new_list = os.listdir(SW_CONFIG['sharefolder'])
             sub_list = list(set(new_list) - set(old_list))
             if len(sub_list) > 0:
-                print "Create a daemon thread watching '%s'" % os.path.join(SW_CONFIG['sharefolder'], sub_list[0])
                 self.processThreadPool.add_job(sub_list[0])
                 # reset the lists
                 old_list = os.listdir(SW_CONFIG['sharefolder'])
@@ -216,19 +223,20 @@ class WorkThread(QtCore.QThread):
         """
         workQueue = Queue.Queue()
         resultQueue = Queue.Queue()
-        def __init__( self, num_of_threads=5):
+        def __init__( self, num_of_threads=THREAD_NUM):
             threading.Thread.__init__(self, name="threadPoolWorkThread")
             self.threads = []
-            self.__createThreadPool( num_of_threads )
+            self.__createThreadPool(num_of_threads)
             self.start()
         def run(self):
-            self.wait_for_complete()
-        def __createThreadPool( self, num_of_threads ):
+            self.__wait_for_complete()
+        def __createThreadPool( self, num_of_threads):
+            print num_of_threads
             for i in range( num_of_threads ):
                 thread = self.processThread(i+1, self.workQueue)
                 self.threads.append(thread)
 
-        def wait_for_complete(self):
+        def __wait_for_complete(self):
             #Check all threads
             Log.d(TAG, "start join thread")
             for thread in self.threads:
@@ -239,40 +247,50 @@ class WorkThread(QtCore.QThread):
             self.workQueue.put( wait_path )
         def stop(self):
             for thread in self.threads:
-                if thread.isAlive():
-                    thread.stop()
-                    thread.join()
-                    print "thread alive: %d"%thread.isAlive()
+                thread.stop()
+            for thread in self.threads:
+                thread.join(timeout = 1)
+                print "thread alive: %d"%thread.isAlive()
         class processThread(utils.ThreadWithExc):
             """
             The work thread implementation
             """
             stopped = False
+            logSignal = None
             def __init__(self, number, workQueue):
                 self.workQueue = workQueue
                 self.number = number
                 self.stopped = False
                 threading.Thread.__init__(self, name="process thread")
                 self.start()
+            def log(self, level, str):
+                if gSignalLog is not None:
+                    gSignalLog.emit(level, str)
             def run(self):
                 print "Thread %d start!!"%self.number
                 try:
                     while not self.stopped:
                         # wait for signal file written
                         try:
-                            wait_path = self.workQueue.get(timeout = 0.5)
+                            wait_path = self.workQueue.get()
+                            print "Thread %d, start :%s"%(self.number, wait_path)
+                            if wait_path == "!stop":
+                                self.stopped = True
+                                print "I'll exit!!!"
+                                break
                             signal_conf = self.wait_for_signal(wait_path)
                             # extract file
-                            target_dir = self.extract_file(self.wait_dir, signal_conf.file_name)
-                            if SW_CONFIG['silence'] == False:
+                            target_dir = self.extract_file(wait_path, signal_conf[SIGNAL_FILE_NAME])
+                            if RUN_CONFIG['pop'] == True:
                                 os.startfile(target_dir)
                             self.execute_command(target_dir, signal_conf)
                         except Queue.Empty:
                             continue
                 except SystemExit:
                     print "hdfsldfjlsdfjlk"
+                print "Thread %d stopped!!"%self.number
             def execute_command(self, target_dir, signal_conf):
-                if signal_conf.execute_command == "":
+                if signal_conf[SIGNAL_EXECUTE_COMMAND] == "":
                     return
                 for command in signal_conf.execute_command.split(';'):
                     target_file = os.path.join(target_dir, signal_conf.file_name)
@@ -281,41 +299,43 @@ class WorkThread(QtCore.QThread):
                     print command
                     ps = subprocess.Popen(command)
                     ps.wait()
+                    
             def wait_for_signal(self,dir_name):
                 print "wait for signal file....."
                 dest_folder = os.path.join(SW_CONFIG['sharefolder'], dir_name)
-                signal_path = os.path.join(dest_folder, dir_name + common.SIGNAL_FILE_SUFFIX)
+                signal_path = os.path.join(dest_folder, dir_name + SIGNAL_FILE_SUFFIX)
                 cf = ConfigParser.ConfigParser()
-                signal_conf = {common.SIGNAL_FILE_NAME : None, common.SIGNAL_EXECUTE_COMMAND : None }
+                signal_conf = {SIGNAL_FILE_NAME : None, SIGNAL_EXECUTE_COMMAND : None }
 
-                while not self.stopped and signal_conf[common.SIGNAL_FILE_NAME] == None:
-                    print signal_conf[common.SIGNAL_FILE_NAME]
+                while not self.stopped and signal_conf[SIGNAL_FILE_NAME] == None:
+                    print signal_conf[SIGNAL_FILE_NAME]
                     try:
                         cf.read(signal_path)
-                        signal_conf['file_name'] = cf.get("information", "file_name")
+                        signal_conf[SIGNAL_FILE_NAME] = cf.get("information", "file_name")
                         break
                     except ConfigParser.Error:
                         time.sleep(2)
                 if self.stopped:
                     return
                 try :
-                    signal_conf['execute_command'] = cf.get("information", "execute_command")
+                    signal_conf[SIGNAL_EXECUTE_COMMAND] = cf.get("information", "execute_command")
                 except ConfigParser.Error:
-                    signal_conf.execute_command = ""
+                    signal_conf[SIGNAL_EXECUTE_COMMAND] = ""
                 return signal_conf
             def extract_file(self, sub_file, signal_file_name):
                 file_dir = sub_file
-                file_name = file_dir + ".7z.001"
-                if SW_CONFIG['backup'] == True:
+                file_name = file_dir
+                if RUN_CONFIG['backup'] == True:
                     local_dir = os.path.join(os.path.join(SW_CONFIG['distpath'], signal_file_name + "_"), file_dir)
                 else:
                     local_dir = SW_CONFIG['distpath']
                 file_path = os.path.join(os.path.join(SW_CONFIG['sharefolder'], file_dir), file_name)
-                command = '"%s" x -o"' % SW_CONFIG['7zpath'] + local_dir + '" "' + file_path + '" -y'
-                print command
+                command = '"%s" x -o"' % SW_CONFIG['7zpath'] + local_dir + '" "' + file_path + '.zip" -y'
+                self.log(utils.INFO, command)
                 ps = subprocess.Popen(command)
                 ps.wait()
                 print "Complete!!! Please visit '%s'" % local_dir
+                gSignalWorkState.emit(utils.STOPPED)
                 return local_dir
             def stop(self):
-                self.stopped = True
+                self.workQueue.put("!stop")

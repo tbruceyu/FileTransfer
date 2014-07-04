@@ -9,6 +9,13 @@ USER_NAME = getpass.getuser()
 HOME_DIR = os.path.expanduser("~")
 SHARE_FOLDER = "F:\\ShareFolder"
 TEAMS = ['Marine', 'Outdoor', 'Platform_Support', 'PND']
+THREAD_NUM = 3
+USER_DIR = 'D:\\User\\'
+# Server port private
+COMPRESS_TEMP_DIR = USER_DIR + USER_NAME + '\\compress_temp'
+
+MMAP_FILE = 'D:\\User\\' + USER_NAME + 'mmap_file'
+
 def getSharefolder():
     temp_folders = []
     for team_name in TEAMS :
