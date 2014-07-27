@@ -198,7 +198,7 @@ def clean():
     os.remove(CONFIG_FILE)
 def init_config():
     SW_CONFIG['compress_dir'] = common.COMPRESS_TEMP_DIR
-    shareFolderList = common.getSharefolder()
+    shareFolderList = common.getSharefolders()
     SW_CONFIG['7zpath'] = common.get7zPath(True)
     choose = 0
     if len(shareFolderList) > 1:

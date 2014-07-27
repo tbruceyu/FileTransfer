@@ -6,10 +6,21 @@ Created on 2014-7-4
 from PyQt4 import QtGui
 import sys
 import resource.resource
+from core.ServerDemon import MainTaskThread
+
+try:
+    _encoding = QtGui.QApplication.UnicodeUTF8
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+except AttributeError:
+    def _translate(context, text, disambig):
+        return QtGui.QApplication.translate(context, text, disambig)
+
 class DeamonWindow(QtGui.QFrame):
     def __init__(self):
         super(DeamonWindow, self).__init__()
         self.setUI()
+        self.team = "Platform_Support"
     def setUI(self):
         self.createActions()
         self.createTrayIcon()
@@ -18,6 +29,12 @@ class DeamonWindow(QtGui.QFrame):
         self.trayIcon.setIcon(icon)
         self.trayIcon.show()
         self.trayIcon.activated.connect(self.iconActivated)
+        self.mainLayout = QtGui.QHBoxLayout()
+        self.runButton = QtGui.QPushButton()
+        self.runButton.setText(_translate("Dialog", "Start", None))
+        self.mainLayout.addWidget(self.runButton);
+        self.setLayout(self.mainLayout)
+        self.runButton.clicked.connect(self.startButtonClick)
     def createTrayIcon(self):
         self.trayIconMenu = QtGui.QMenu(self)
         self.trayIconMenu.addAction(self.minimizeAction)
@@ -45,3 +62,14 @@ class DeamonWindow(QtGui.QFrame):
     def exit(self):
         QtGui.qApp.quit()
         sys.exit(0)
+    def closeEvent(self, event):
+        if self.trayIcon.isVisible():
+#            QtGui.QMessageBox.information(self, "Systray",
+#                    "The program will keep running in the system tray. To "
+#                    "terminate the program, choose <b>Quit</b> in the "
+#                    "context menu of the system tray entry.")
+            self.setVisible(False)
+            event.ignore()
+    def startButtonClick(self):
+        self.mainThread = MainTaskThread("Platform_Support")
+        self.mainThread.start()

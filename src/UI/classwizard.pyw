@@ -21,7 +21,7 @@ class ConfigWizard(QtGui.QWizard):
     def accept(self):
         config={}
         config['7zpath'] = self.configPage.get7zPath()
-        config['sharefolder'] = self.configPage.getShareFolder()
+        config['sharefolder'] = self.configPage.getShareFolders()
         config['distpath'] = self.configPage.getDistPath()
         config['startup'] = self.configPage.isStartup()
         config['sw_version'] = common.Version;
@@ -49,7 +49,7 @@ class ConfigInfoPage(QtGui.QWizardPage):
         self.compressButton.setFixedSize(30, 20)
         self.compressButton.clicked.connect(self.set7zPath)
         self.shareFolderLable = QtGui.QLabel("Share folder:")
-        self.shareFolderComboBox = self.createComboBox(common.getSharefolder())
+        self.shareFolderComboBox = self.createComboBox(common.getSharefolders())
         self.shareFolderButton = QtGui.QPushButton("...")
         self.shareFolderButton.setFixedSize(30, 20)
         self.shareFolderButton.clicked.connect(self.setShareFolder)

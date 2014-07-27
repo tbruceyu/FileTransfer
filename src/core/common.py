@@ -16,7 +16,7 @@ COMPRESS_TEMP_DIR = os.path.join(os.path.join(USER_DIR, USER_NAME), 'compress_te
 # this file only for mmap use
 MMAP_FILE = os.path.join(os.path.join(USER_DIR, USER_NAME), 'mmap.bin')
 
-def getSharefolder():
+def getSharefolders():
     temp_folders = []
     for team_name in TEAMS :
         team_path = os.path.join(SHARE_FOLDER, team_name)
