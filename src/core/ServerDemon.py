@@ -8,6 +8,7 @@ import threading
 import mmap
 import os
 from core import common
+import time
 MMAP_FOLDER = "D:\\User"
 class Message():
     id = 0
@@ -43,7 +44,6 @@ class MainTaskThread(QtCore.QThread):
         threads = {}
         i = 0
         for path in os.listdir(dir):
-            print path
             if os.path.isdir(os.path.join(dir, path)):
                 user = os.path.basename(path)
                 print user
@@ -51,34 +51,38 @@ class MainTaskThread(QtCore.QThread):
                 i = i + 1
         return threads
     def run(self):
-        # just reading the file transfer request from the client(self user)
-        try:
-            self.pipeHandle = win32pipe.CreateNamedPipe(r'\\.\pipe\%s'%common.USER_NAME,
-                    win32pipe.PIPE_ACCESS_DUPLEX,
-                    win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_WAIT,
-                    1, 65536, 65536,300,None)
-        except Exception as e:
-            print e
-        win32pipe.ConnectNamedPipe(self.pipeHandle, None)
         for (name, thread) in self.clientReadThreads.items():
             print "start task!"
             thread.start()
+        # just reading the file transfer request from the client(self user)
         while not self.stopped:
-            data = win32file.ReadFile(self.pipeHandle, 4096)
-            print data
+            try:
+                self.pipeHandle = win32pipe.CreateNamedPipe(NAMED_PIPE_PATH,
+                        win32pipe.PIPE_ACCESS_DUPLEX,
+                        win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_WAIT,
+                        win32pipe.PIPE_UNLIMITED_INSTANCES, 512, 512,0,None)
+            except Exception as e:
+                print e
+            fConnected = win32pipe.ConnectNamedPipe(self.pipeHandle, None)
+            if fConnected == 0:
+                data = win32file.ReadFile(self.pipeHandle, 4096)
+            else:
+                time.sleep(3)
+            if data[0] == 0:
+                print data[1]
 class ClientReadThread(threading.Thread):
     stopped = False
     def __init__(self, user):
         threading.Thread.__init__(self, name = "ClientReadThread")
         mmapFile = os.path.join(MMAP_FOLDER, user+".mmap")
         # make sure there is a mmap file
-        self.mmap_fp = open(mmapFile, 'w+')
+        self.__mmap_fp = open(mmapFile, 'w+')
         self.__mmap_fd = 0
         try :
-            self.__mmap_fd = mmap.mmap(self.mmap_fp.fileno(), 1024, access=mmap.ACCESS_WRITE)
+            self.__mmap_fd = mmap.mmap(self.__mmap_fp.fileno(), 1024, access=mmap.ACCESS_WRITE)
         except Exception as e:
             print "heheh"+str(e)
-        self.__clientUser = os.path.splitext(os.path.basename(mmapFile))[0] 
+        self.__clientUser = os.path.splitext(os.path.basename(mmapFile))[0]
         self.__stopped = False
         self.__handler = ClientHandler(user)
     def __parse(self, stringMessage):
@@ -89,6 +93,7 @@ class ClientReadThread(threading.Thread):
         message.type = messageList[2]
         message.action = messageList[3]
         message.data = messageList[4]
+        return message
     def __validMessage(self, message):
         if message.target.upper() == "ALL":
             return True
@@ -99,6 +104,7 @@ class ClientReadThread(threading.Thread):
         line = ""
         last_line = ""
         while not self.stopped:
+            time.sleep(0.5)
             line = self.__mmap_fd.readline()
             if line == last_line:
                 continue
@@ -111,7 +117,6 @@ class ClientReadThread(threading.Thread):
         self.mmap_fp.close()
     def stop(self):
         self.stopped = True
-
 
 
 

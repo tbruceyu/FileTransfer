@@ -13,7 +13,8 @@ THREAD_NUM = 3
 USER_DIR = 'D:\\User\\'
 # Server port private
 COMPRESS_TEMP_DIR = os.path.join(os.path.join(USER_DIR, USER_NAME), 'compress_temp')
-# this file only for mmap use
+# this file only for server deamon process use
+NAMED_PIPE_PATH=r"\\.\pipe\%s"%USER_NAME
 MMAP_FILE = os.path.join(os.path.join(USER_DIR, USER_NAME), 'mmap.bin')
 
 def getSharefolders():

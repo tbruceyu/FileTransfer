@@ -5,11 +5,12 @@
 from PyQt4 import QtGui
 from core import transferPC, common
 from UI.MainWindow import MainWindow
+from UI.ConfigurePage import ConfigInfoWizardPage
 
 class ConfigWizard(QtGui.QWizard):
     def __init__(self, parent=None):
         super(ConfigWizard, self).__init__(parent)
-        self.configPage = ConfigInfoPage()
+        self.configPage = ConfigInfoWizardPage()
         self.addPage(self.configPage)
         self.setPixmap(QtGui.QWizard.BannerPixmap,
                 QtGui.QPixmap('../../images/banner.png'))
@@ -21,7 +22,7 @@ class ConfigWizard(QtGui.QWizard):
     def accept(self):
         config={}
         config['7zpath'] = self.configPage.get7zPath()
-        config['sharefolder'] = self.configPage.getShareFolders()
+        config['sharefolder'] = self.configPage.getShareFolder()
         config['distpath'] = self.configPage.getDistPath()
         config['startup'] = self.configPage.isStartup()
         config['sw_version'] = common.Version;

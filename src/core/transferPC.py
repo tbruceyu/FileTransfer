@@ -18,8 +18,10 @@ from pprint import pprint
 
 DEBUG_TAG = "transfer"
 TAG = DEBUG_TAG
+STOP_COMMAND="!stop"
 SW_CONFIG = {}
 RUN_CONFIG = {}
+HOOK_CONFIG = {}
 
 CONFIG_FILE = os.path.join(HOME_DIR, "file_transfer.conf")
 
@@ -69,19 +71,24 @@ def saveCurrentConfig():
     cf.set("sw_config", "version", SW_CONFIG['sw_version'])
     cf.set("sw_config", "startup", SW_CONFIG['startup'])
     cf.add_section("run_config")
-    pprint(RUN_CONFIG)
     cf.set("run_config", "pop", RUN_CONFIG['pop'])
     cf.set("run_config", "backup", RUN_CONFIG['backup'])
+    cf.add_section("hook_config'")
+    for k, v in HOOK_CONFIG:
+        cf.set("hook_config", k, v)
     fp = open(CONFIG_FILE, "w")
     cf.write(fp)
     fp.close()
-def set_run_config(key, value):
+def setConfig(type, key, value):
     """
-    general run configuration method
+    general configuration method
     """
-    print key
-    RUN_CONFIG[key] = value
-    pprint(RUN_CONFIG)
+    if type == "sw":
+        SW_CONFIG[key] = value
+    elif type == "run":
+        RUN_CONFIG[key] = value
+    elif type == "hook":
+        HOOK_CONFIG[key] = value
 def init_config():
     """
     Initiliaze all of the software configurations
@@ -109,6 +116,11 @@ def init_config():
         Log.e(TAG, "no run config in config file!")
         RUN_CONFIG['backup'] = False
         RUN_CONFIG['pop'] = False
+    try :
+        for option in cf.options("hook_config"):  
+            HOOK_CONFIG[option] = cf.get("hook_config", option)
+    except ConfigParser.Error:
+        Log.e(TAG, "No hook config in config file!")
     if not os.path.exists(SW_CONFIG['sharefolder']):
         try:
             os.makedirs(SW_CONFIG['sharefolder'])
@@ -130,7 +142,7 @@ def init():
     Module initiliaze
     """
     init_config()
-
+    Log.d(TAG, "modules init!")
 def clean():
     """ 
     Delete the config file
@@ -166,6 +178,7 @@ class HistoryThread(QtCore.QThread):
             self.signalCallback.emit(temp)
 gSignalWorkState = None
 gSignalLog = None
+gSignalMessage = None
 class WorkThread(QtCore.QThread):
     """
     Worker thread class
@@ -174,17 +187,20 @@ class WorkThread(QtCore.QThread):
     signalPromptMsg = pyqtSignal([int, str])
     signalWorkState = pyqtSignal(int)
     signalLog = pyqtSignal([int, str])
+    signalMessage = pyqtSignal(str)
     stopped = False
     runConfig = {'pop' : False, 'backup' : False}
     def __init__(self, pop, backup):
         global gSignalWorkState
         global gSignalLog
+        global gSignalMessage
         super(WorkThread, self).__init__(None)
         self.processThreadPool = self.threadPoolWorkThread(THREAD_NUM)
         self.pop = pop
         self.backup = backup
         gSignalWorkState = self.signalWorkState
         gSignalLog = self.signalLog
+        gSignalMessage = self.signalMessage
     def run(self):
         self.signalStartSucceed.emit()
         saveCurrentConfig()
@@ -212,7 +228,7 @@ class WorkThread(QtCore.QThread):
                 old_list = os.listdir(SW_CONFIG['sharefolder'])
                 new_list = old_list
             old_list = new_list
-            time.sleep(2)
+            time.sleep(1)
     def stop(self):
         self.stopped = True
         self.processThreadPool.stop()
@@ -251,7 +267,7 @@ class WorkThread(QtCore.QThread):
             for thread in self.threads:
                 thread.join(timeout = 1)
                 print "thread alive: %d"%thread.isAlive()
-        class processThread(utils.ThreadWithExc):
+        class processThread(threading.Thread):
             """
             The work thread implementation
             """
@@ -274,13 +290,18 @@ class WorkThread(QtCore.QThread):
                         try:
                             wait_path = self.workQueue.get()
                             print "Thread %d, start :%s"%(self.number, wait_path)
-                            if wait_path == "!stop":
+                            if wait_path == STOP_COMMAND:
                                 self.stopped = True
                                 print "I'll exit!!!"
                                 break
                             signal_conf = self.wait_for_signal(wait_path)
                             # extract file
-                            target_dir = self.extract_file(wait_path, signal_conf[SIGNAL_FILE_NAME])
+                            try:
+                                target_dir = self.extract_file(wait_path, signal_conf[SIGNAL_FILE_NAME])
+                                self.log(utils.INFO, "Transfer %s success!"%signal_conf[SIGNAL_FILE_NAME])
+                            except Exception, e:
+                                self.log(utils.ERROR, "Transfer %s Failed!"%signal_conf[SIGNAL_FILE_NAME])
+                            gSignalMessage.emit("sdflkj")
                             if RUN_CONFIG['pop'] == True:
                                 os.startfile(target_dir)
                             self.execute_command(target_dir, signal_conf)
@@ -331,11 +352,13 @@ class WorkThread(QtCore.QThread):
                     local_dir = SW_CONFIG['distpath']
                 file_path = os.path.join(os.path.join(SW_CONFIG['sharefolder'], file_dir), file_name)
                 command = '"%s" x -o"' % SW_CONFIG['7zpath'] + local_dir + '" "' + file_path + '.zip" -y'
-                self.log(utils.INFO, command)
-                ps = subprocess.Popen(command)
-                ps.wait()
+                try:
+                    ps = subprocess.Popen(command)
+                    ps.wait()
+                except:
+                    raise Exception, "execute command error:"+command
                 print "Complete!!! Please visit '%s'" % local_dir
                 gSignalWorkState.emit(utils.STOPPED)
                 return local_dir
             def stop(self):
-                self.workQueue.put("!stop")
+                self.workQueue.put(STOP_COMMAND)

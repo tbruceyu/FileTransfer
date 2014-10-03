@@ -1,10 +1,10 @@
 from PyQt4 import QtCore, QtGui, Qt
 from core import transferPC, utils
 from core.transferPC import WorkThread
-from UI.ConfigurePage import ConfigInfoPage
 from UI.HistoryPage import HistoryPageWindow
 import resource.resource
 import sys
+from UI.ConfigurePage import MainConfigurePage
 DEBUG_TAG = "MainWindow"
 LOG_LEVEL_COLOR_TABLE = {
                  utils.INFO: QtGui.QColor(0, 0x22, 0),
@@ -26,6 +26,7 @@ except AttributeError:
 class MainWindow(QtGui.QFrame):
     def __init__(self):
         super(MainWindow, self).__init__()
+        self.WorkThread = None
         transferPC.init()
         self.setUI()
 
@@ -110,6 +111,7 @@ class MainWindow(QtGui.QFrame):
 #        icon = QtGui.QIcon('../../images/bad.svg')
 #        self.trayIcon.setIcon(icon)
         self.setIconByState(utils.STOPPED)
+        self.trayIcon.setToolTip((u"Garmin Transfer"))
         self.trayIcon.show()
         self.trayIcon.activated.connect(self.iconActivated)
         self.RunButton.clicked.connect(self.RunButtonClick)
@@ -131,6 +133,8 @@ class MainWindow(QtGui.QFrame):
         cursor.mergeCharFormat(fmt)
         self.LogView.mergeCurrentCharFormat(fmt)
         self.LogView.append(content)
+    def showMessage(self, message):
+        self.trayIcon.showMessage(QtCore.QString("Converted Python string object"),  QtCore.QString("Converted Python string object"))
     def setIconByState(self, state):
         if state == utils.STOPPED:
             icon = QtGui.QIcon(':/images/bad.svg')
@@ -163,6 +167,7 @@ class MainWindow(QtGui.QFrame):
         self.WorkThread.signalPromptMsg[int, str].connect(self.PromptSlot)
         self.WorkThread.signalWorkState[int].connect(self.UpdateWorkState)
         self.WorkThread.signalLog[int, str].connect(self.Log)
+        self.WorkThread.signalMessage[str].connect(self.showMessage)
         self.WorkThread.start()
     def StopButtonClick(self):
         self.WorkThread.stop()
@@ -171,7 +176,7 @@ class MainWindow(QtGui.QFrame):
         self.RunButton.setEnabled(True)
         self.StopButton.setEnabled(False)
     def settingButtonClick(self):
-        self.configPage = ConfigInfoPage(False)
+        self.configPage = MainConfigurePage()
         self.configPage.exec_()
     def historyButtonClick(self):
         self.historyPage = HistoryPageWindow()
@@ -181,7 +186,7 @@ class MainWindow(QtGui.QFrame):
     def BackupCheckboxToggle(self, visible):
         transferPC.set_run_config('backup', visible)
     def retranslateUi(self, Dialog):
-        Dialog.setWindowTitle(_translate("Dialog", "Dialog", None))
+        Dialog.setWindowTitle(_translate("GarminTransfer", "GarminTransfer", None))
         self.Checkboxes['pop'].setText(_translate("Dialog", "Pop Window", None))
         self.Checkboxes['backup'].setText(_translate("Dialog", "Backup Mode", None))
         self.RunButton.setText(_translate("Dialog", "Run", None))
@@ -211,13 +216,6 @@ class MainWindow(QtGui.QFrame):
         if reason in (QtGui.QSystemTrayIcon.Trigger, QtGui.QSystemTrayIcon.DoubleClick):
             self.showNormal()
 
-    def showMessage(self):
-        icon = QtGui.QSystemTrayIcon.MessageIcon(
-                self.typeComboBox.itemData(self.typeComboBox.currentIndex()))
-        self.trayIcon.showMessage(self.titleEdit.text(),
-                self.bodyEdit.toPlainText(), icon,
-                self.durationSpinBox.value() * 1000)
-
     def messageClicked(self):
         QtGui.QMessageBox.information(None, "Systray",
                 "Sorry, I already gave what help I could.\nMaybe you should "
@@ -237,7 +235,8 @@ class MainWindow(QtGui.QFrame):
         self.quitAction = QtGui.QAction("&Quit", self,
                 triggered=self.exit)
     def exit(self):
-        self.WorkThread.stop()
+        if self.WorkThread != None:
+            self.WorkThread.stop()
         QtGui.qApp.quit()
         sys.exit(0)
     def createTrayIcon(self):

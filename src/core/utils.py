@@ -59,11 +59,11 @@ def _async_raise(tid, exctype):
         # and you should call it again with exc=NULL to revert the effect"
         ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(tid), 0)
         raise SystemError("PyThreadState_SetAsyncExc failed")
-
+'''
 class ThreadWithExc(threading.Thread):
-    '''A thread class that supports raising exception in the thread from
+    A thread class that supports raising exception in the thread from
        another thread.
-    '''
+    
     def _get_my_tid(self):
         return self.ident
         
@@ -96,3 +96,4 @@ class ThreadWithExc(threading.Thread):
         """raises SystemExit in the context of the given thread, which should 
         cause the thread to exit silently (unless caught)"""
         self.raiseExc(SystemExit)
+'''

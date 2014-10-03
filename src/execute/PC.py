@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath('%s/..' % sys.path[0]))
 from PyQt4 import QtCore, QtGui
 from core import transferPC
 from core import utils
-from UI.classwizard import ConfigWizard
+from UI.SetupWiizard import ConfigWizard
 from UI.MainWindow import MainWindow
 
 try:
